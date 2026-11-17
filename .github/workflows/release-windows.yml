@@ -1,12 +1,14 @@
 name: Release / Windows (x64)
 
 on:
+  push:
+    branches: [heightmap-bilineal]
   workflow_dispatch:
     inputs:
       branch_name:
         description: 'Branch to run on'
         required: true
-        default: 'master'
+        default: 'heightmap-bilineal'
         type: string
 
 env:
@@ -20,7 +22,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        ref: ${{ github.event.inputs.branch_name }}
+        ref: ${{ github.event.inputs.branch_name || github.ref_name }}
         fetch-depth: 0
         fetch-tags: true
 
