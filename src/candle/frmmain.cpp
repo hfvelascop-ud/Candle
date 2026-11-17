@@ -140,6 +140,7 @@ void frmMain::initVariables()
 
     m_fileChanged = false;
     m_heightMapChanged = false;
+    m_settingsLoading = true;
 
     m_homing = false;
     m_updateSpindleSpeed = false;
@@ -1281,13 +1282,15 @@ void frmMain::on_chkHeightMapUse_clicked(bool checked)
                 if (i == 0) {
                     x = list->at(i)->getStart().x();
                     y = list->at(i)->getStart().y();
-                    z = list->at(i)->getStart().z() + Interpolation::bicubicInterpolate(borderRect, &m_heightMapModel, x, y);
+                    z = list->at(i)->getStart().z() + Interpolation::interpolate(borderRect, &m_heightMapModel, x, y,
+                            ui->cboHeightMapInterpolationType->currentIndex());
                     list->at(i)->setStart(QVector3D(x, y, z));
                 } else list->at(i)->setStart(list->at(i - 1)->getEnd());
 
                 x = list->at(i)->getEnd().x();
                 y = list->at(i)->getEnd().y();
-                z = list->at(i)->getEnd().z() + Interpolation::bicubicInterpolate(borderRect, &m_heightMapModel, x, y);
+                z = list->at(i)->getEnd().z() + Interpolation::interpolate(borderRect, &m_heightMapModel, x, y,
+                        ui->cboHeightMapInterpolationType->currentIndex());
                 list->at(i)->setEnd(QVector3D(x, y, z));
 
                 if (progress.isVisible() && (i % PROGRESSSTEP == 0)) {
@@ -1573,6 +1576,18 @@ void frmMain::on_txtHeightMapInterpolationStepY_valueChanged(double arg1)
 {
     Q_UNUSED(arg1)
 
+    updateHeightMapInterpolationDrawer();
+}
+
+void frmMain::on_cboHeightMapInterpolationType_currentIndexChanged(int index)
+{
+    Q_UNUSED(index)
+
+    if (m_settingsLoading || !m_heightMapMode) return;
+
+    m_heightMapChanged = true;
+    // Clears the transformed-program cache. On leaving Edit, Candle rebuilds
+    // the toolpath from the original program using the selected method.
     updateHeightMapInterpolationDrawer();
 }
 
@@ -3317,7 +3332,8 @@ void frmMain::updateHeightMapInterpolationDrawer(bool reset)
             double x = interpolationStepX * j + borderRect.x();
             double y = interpolationStepY * i + borderRect.y();
 
-            row.append(reset ? qQNaN() : Interpolation::bicubicInterpolate(borderRect, &m_heightMapModel, x, y));
+            row.append(reset ? qQNaN() : Interpolation::interpolate(borderRect, &m_heightMapModel, x, y,
+                    ui->cboHeightMapInterpolationType->currentIndex()));
         }
         interpolationData.append(row);
     }
@@ -3767,7 +3783,8 @@ void frmMain::restoreSettings()
 
     ui->txtHeightMapInterpolationStepX->setValue(set->value("heightmapInterpolationStepX", 1).toDouble());
     ui->txtHeightMapInterpolationStepY->setValue(set->value("heightmapInterpolationStepY", 1).toDouble());
-    ui->cboHeightMapInterpolationType->setCurrentIndex(set->value("heightmapInterpolationType", 0).toInt());
+    ui->cboHeightMapInterpolationType->setCurrentIndex(
+            set->value("heightmapInterpolationType", 0).toInt() == Interpolation::Bilinear ? Interpolation::Bilinear : Interpolation::Bicubic);
     ui->chkHeightMapInterpolationShow->setChecked(set->value("heightmapInterpolationShow", true).toBool());
 
     ui->cmdPerspective->setChecked(set->value("viewPerspective", true).toBool());
@@ -5030,11 +5047,13 @@ void frmMain::loadHeightMap(QString fileName)
     m_heightMapFileName = fileName;
     m_heightMapChanged = false;
 
-    ui->cboHeightMapInterpolationType->setCurrentIndex(list[0].toInt());
+    ui->cboHeightMapInterpolationType->setCurrentIndex(
+            list[0].toInt() == Interpolation::Bilinear ? Interpolation::Bilinear : Interpolation::Bicubic);
     ui->txtHeightMapInterpolationStepX->setValue(list[1].toDouble());
     ui->txtHeightMapInterpolationStepY->setValue(list[2].toDouble());
 
     updateHeightMapInterpolationDrawer();
+    m_heightMapChanged = false;
 }
 
 bool frmMain::saveHeightMap(QString fileName)
@@ -5288,6 +5307,7 @@ void frmMain::updateControlsState() {
     ui->widgetHeightMap->setEnabled(!process && m_programModel.rowCount() > 1
         && !m_currentDrawer->viewParser()->axisRotationUsed(GcodeViewParse::RotationAxisA));
     ui->cmdHeightMapMode->setEnabled(!ui->txtHeightMap->text().isEmpty());
+    ui->cboHeightMapInterpolationType->setEnabled(m_heightMapMode && m_senderState == SenderStopped && !m_sdRun);
     ui->cmdHeightMapOrigin->setEnabled(!ui->txtHeightMap->text().isEmpty() && portOpened && !process);
 
     ui->cmdFileSend->setText(m_heightMapMode ? tr("Probe") : tr("Send"));

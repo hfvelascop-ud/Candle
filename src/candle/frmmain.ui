@@ -1219,8 +1219,8 @@ QLabel[overrided=&quot;false&quot;] {
                       </item>
                       <item>
                        <widget class="QComboBox" name="cboHeightMapInterpolationType">
-                        <property name="enabled">
-                         <bool>false</bool>
+                        <property name="toolTip">
+                         <string>Interpolation used for both the heightmap preview and G-code compensation. Edit the heightmap to change it.</string>
                         </property>
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -1231,6 +1231,11 @@ QLabel[overrided=&quot;false&quot;] {
                         <item>
                          <property name="text">
                           <string>Bicubic</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>Bilinear</string>
                          </property>
                         </item>
                        </widget>

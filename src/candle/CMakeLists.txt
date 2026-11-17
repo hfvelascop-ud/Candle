@@ -1,5 +1,5 @@
 set(APP_NAME ${PROJECT_NAME})
-set(APP_VERSION ${PROJECT_VERSION})
+set(APP_VERSION "${PROJECT_VERSION}-bilinear")
 
 execute_process(
   COMMAND git log -1 --format=%h

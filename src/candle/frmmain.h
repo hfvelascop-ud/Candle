@@ -215,6 +215,7 @@ private slots:
     void on_txtHeightMapProbeFeed_valueChanged(double arg1);
     void on_txtHeightMapInterpolationStepX_valueChanged(double arg1);
     void on_txtHeightMapInterpolationStepY_valueChanged(double arg1);
+    void on_cboHeightMapInterpolationType_currentIndexChanged(int index);
     void on_cmdHeightMapMode_toggled(bool checked);
     void on_cmdHeightMapCreate_clicked();
     void on_cmdHeightMapLoad_clicked();

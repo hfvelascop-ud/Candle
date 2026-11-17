@@ -7,10 +7,52 @@
 #include <QVector>
 #include <QRectF>
 #include <QAbstractTableModel>
+#include <cmath>
 
 class Interpolation
 {
 public:
+    // These values are persisted in settings and in candle map v3 files.
+    enum Type { Bicubic = 0, Bilinear = 1 };
+
+    static double bilinearInterpolate(QRectF borderRect, QAbstractTableModel *basePoints, double x, double y)
+    {
+        // A partially probed or invalid map must not supply a made-up height.
+        if (!basePoints || basePoints->rowCount() < 2) return qQNaN();
+        const int columns = basePoints->columnCount();
+        const int rows = basePoints->rowCount();
+        if (columns < 2 || !qIsFinite(x) || !qIsFinite(y)
+                || !qIsFinite(borderRect.x()) || !qIsFinite(borderRect.y())
+                || !qIsFinite(borderRect.width()) || !qIsFinite(borderRect.height())
+                || borderRect.width() <= 0 || borderRect.height() <= 0) return qQNaN();
+
+        // Hold the nearest edge outside the measured area; do not extrapolate.
+        const double gx = qBound(0.0, (x - borderRect.x()) / borderRect.width() * (columns - 1), double(columns - 1));
+        const double gy = qBound(0.0, (y - borderRect.y()) / borderRect.height() * (rows - 1), double(rows - 1));
+        const int ix = qMin(int(std::floor(gx)), columns - 2);
+        const int iy = qMin(int(std::floor(gy)), rows - 2);
+        const double u = gx - ix;
+        const double v = gy - iy;
+
+        double h[2][2];
+        for (int j = 0; j < 2; ++j) {
+            for (int i = 0; i < 2; ++i) {
+                bool ok = false;
+                h[j][i] = basePoints->data(basePoints->index(iy + j, ix + i), Qt::UserRole).toDouble(&ok);
+                if (!ok || !qIsFinite(h[j][i])) return qQNaN();
+            }
+        }
+
+        return (1 - v) * ((1 - u) * h[0][0] + u * h[0][1])
+                + v * ((1 - u) * h[1][0] + u * h[1][1]);
+    }
+
+    static double interpolate(QRectF borderRect, QAbstractTableModel *basePoints, double x, double y, int type)
+    {
+        return type == Bilinear ? bilinearInterpolate(borderRect, basePoints, x, y)
+                                : bicubicInterpolate(borderRect, basePoints, x, y);
+    }
+
     static double cubicInterpolate(double p[4], double x)
     {
         return p[1] + 0.5 * x * (p[2] - p[0] + x *(2.0 * p[0] - 5.0 * p[1]
